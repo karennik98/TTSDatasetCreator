@@ -1,0 +1,51 @@
+I need a Python GUI application for splitting audio files with these specific requirements:
+
+1. Features needed:
+- Load audio file (MP3 or WAV)
+- Play/pause audio with slider control (NO autoplay when loading file)
+- Mark split points during playback
+- Save/load work progress via config file
+- Split audio at marked points
+- Convert segments to WAV (22050Hz, 16-bit, mono)
+- Configure starting segment number in config file (used only first time with empty output directory)
+- Continue numbering segments from last number after first run
+- Track last split position between sessions
+
+2. GUI elements:
+- Create/Load config buttons
+- Play/Pause button
+- Mark Point button
+- Forward/Back 5s buttons
+- Progress slider
+- Time display (MM:SS)
+- Split points list
+- Remove point button
+- Split audio button
+
+3. Config file (.json) structure:
+{
+    "input_audio_file": path,
+    "output_directory": path,
+    "metadata_file": path,
+    "split_points": [],
+    "last_position": 0,
+    "start_segment_number": number  # Used only on first run
+}
+
+4. Dependencies:
+- tkinter for GUI (including simpledialog)
+- pygame for audio playback
+- pydub for audio processing
+- Other standard libraries (json, csv, os, etc.)
+
+5. Critical features:
+- NO autoplay when loading config or audio file
+- Remember last split position when restarting
+- Continue splitting from last position
+- Use start_segment_number only when output directory is empty
+- Maintain correct segment numbering after first run
+- Save split points as timestamps
+- Update metadata.csv with segment filenames
+- Convert to mono WAV with correct specs
+
+Please create this audio splitting application with exact implementation as specified, ensuring manual playback control and proper segment numbering based on config and directory state.
