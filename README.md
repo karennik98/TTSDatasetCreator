@@ -1,15 +1,18 @@
-# Audio Splitter
+# Audio Splitter with Text Association
 
-A Python application for splitting audio files into segments with precise control and session persistence.
+A Python application for splitting audio files and associating segments with text from a Word document. Designed for creating paired audio-text segments, particularly useful for speech datasets or transcription projects.
 
 ## Features
+
 - Load and split MP3/WAV audio files
-- Mark split points during playback
-- Save work progress and resume later
+- Load and parse DOCX files by sentences (split by ":")
+- Mark split points during audio playback
+- Automatic text-to-audio segment association
 - Convert segments to WAV format (22050Hz, 16-bit, mono)
+- Save/resume work progress via config file
 - Track split points and positions between sessions
 - Configurable starting segment number
-- Continuous segment numbering across sessions
+- Hotkeys for main controls
 
 ## Installation
 
@@ -19,12 +22,22 @@ git clone https://github.com/yourusername/audio-splitter.git
 cd audio-splitter
 ```
 
-2. Install required dependencies:
+2. Create a virtual environment (recommended):
 ```bash
-pip install pygame pydub tk
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
 ## Usage
+
+### Hotkeys
+- `Space`: Play/Pause audio
+- `Enter`: Mark split point
 
 ### First Time Setup
 
@@ -33,133 +46,88 @@ pip install pygame pydub tk
 python audio_splitter.py
 ```
 
-2. Click "Create New Config" and follow the prompts:
-   - Select input audio file (MP3 or WAV)
-   - Choose output directory for segments
-   - Select location for metadata CSV file
-   - Enter starting segment number (this will be used for first batch of segments)
-   - Save your config file (.json)
+2. Click "Create New Config" and select:
+   - Input audio file (MP3 or WAV)
+   - Output directory for segments
+   - Metadata CSV file location
+   - Word document (.docx)
+   - Enter starting segment number
 
-### Regular Operation
+### Working Process
 
-1. Launch the application
-2. Click "Load Config" and select your saved config file
-3. Use the playback controls:
-   - Play/Pause - Start or pause audio playback
-   - ← 5s / 5s → - Jump backward or forward
-   - Progress slider - Seek to any position
-4. Mark split points:
-   - Play the audio
-   - Click "Mark Point" at desired positions
-   - Split points are automatically saved
-5. Review split points:
-   - All marked points are shown in the list
-   - Remove unwanted points using "Remove Selected Point"
-6. Split the audio:
-   - Click "Split Audio" to create segments
-   - Segments are saved as WAV files in your output directory
-   - Metadata is updated in the CSV file
+1. **Document Processing**:
+   - Document text is automatically split by ":" character
+   - Sentences are displayed as numbered list
+   - Current sentence is highlighted
+
+2. **Audio Marking**:
+   - Play audio (Space)
+   - Navigate to split point
+   - Mark point (Enter)
+   - System automatically associates marked point with current sentence
+   - Repeat for all sentences
+
+3. **Creating Segments**:
+   - Click "Split Audio" when done marking
+   - Program creates:
+     * WAV segments in output directory
+     * Metadata CSV with filename|text pairs
 
 ### Resuming Work
 
-1. Load your previous config file
-2. The application will:
-   - Remember all previous split points
-   - Resume from last position
-   - Continue segment numbering from last segment
-   - Maintain your output directory and metadata file
+1. Click "Load Config"
+2. Select previous config file
+3. Program resumes:
+   - Shows document with sentences
+   - Highlights next sentence
+   - Positions audio at last split point
+   - Maintains split point history
 
-## Output Format
+### Output Files
 
-### Audio Segments
-- Format: WAV
-- Sample Rate: 22050 Hz
-- Bit Depth: 16-bit
-- Channels: Mono
-- Naming: segment_1.wav, segment_2.wav, etc.
+1. Audio Segments:
+   - Format: WAV
+   - Sample Rate: 22050 Hz
+   - Bit Depth: 16-bit
+   - Channels: Mono
+   - Naming: segment_1.wav, segment_2.wav, etc.
 
-### Metadata File
-- Format: CSV
-- Columns: filename
-- Records all segment filenames in order
+2. Metadata File (CSV):
+   - Format: filename|text
+   - Example:
+     ```
+     filename|text
+     segment_1.wav|First sentence text
+     segment_2.wav|Second sentence text
+     ```
 
-### Config File
-- Format: JSON
-- Stores:
-  - Input audio file path
-  - Output directory path
-  - Metadata file path
-  - Split points
-  - Last position
-  - Starting segment number (used only on first run)
+## Config File Structure
 
-## Important Notes
+```json
+{
+    "input_audio_file": "path/to/audio.mp3",
+    "output_directory": "path/to/output/dir",
+    "metadata_file": "path/to/metadata.csv",
+    "document_file": "path/to/document.docx",
+    "split_points": [],
+    "last_position": 0,
+    "start_segment_number": 1,
+    "current_sentence_index": 0
+}
+```
 
-1. First Run:
-   - The starting segment number from config is only used when the output directory is empty
-   - After first use, segment numbering continues from the last existing segment
+## Requirements
 
-2. Split Points:
-   - Split points are saved in seconds
-   - Displayed in MM:SS format
-   - Automatically sorted in chronological order
+See requirements.txt for detailed dependencies.
+- Python 3.9+
+- pygame
+- pydub
+- python-docx
+- tkinter (usually comes with Python)
 
-3. Session Persistence:
-   - All marked points are saved automatically
-   - Work can be resumed at any time
-   - Split operation continues from last position
+## Notes
 
-4. Audio Controls:
-   - Audio doesn't start automatically when loading
-   - Must use Play button to start playback
-   - Can mark points only during playback
-
-## Common Workflows
-
-### Complete Audio File in Multiple Sessions
-
-1. First Session:
-   - Create new config
-   - Mark first batch of points
-   - Split audio
-   - Close program
-
-2. Later Sessions:
-   - Load same config
-   - Continue marking points
-   - Split audio again
-   - Segments continue numbering from last session
-
-### Correcting Mistakes
-
-1. Remove Wrong Points:
-   - Select point in list
-   - Click "Remove Selected Point"
-   - Points are automatically re-saved
-
-2. Change Split Position:
-   - Remove incorrect point
-   - Navigate to correct position
-   - Mark new point
-   - Split audio when ready
-
-## Troubleshooting
-
-1. Audio Not Playing
-   - Check if audio file exists at path in config
-   - Ensure audio file is MP3 or WAV format
-   - Click Play button to start playback
-
-2. Segment Numbers Wrong
-   - Check output directory for existing segments
-   - Verify start_segment_number in config (first run only)
-   - Clear output directory for fresh start
-
-3. Split Points Not Saved
-   - Ensure config file is writable
-   - Check if split points appear in list
-   - Verify config file shows updated points
-
-## Contributing
-
-Feel free to submit issues, fork the repository, and create pull requests for any improvements.
+- Input text documents should use ":" as sentence delimiter
+- Program automatically tracks last position between sessions
+- Split points are saved automatically
+- Segments are numbered continuously across sessions
