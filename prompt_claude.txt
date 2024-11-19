@@ -1,51 +1,145 @@
-I need a Python GUI application for splitting audio files with these specific requirements:
+# Audio Splitter Application Prompt
 
-1. Features needed:
-- Load audio file (MP3 or WAV)
-- Play/pause audio with slider control (NO autoplay when loading file)
-- Mark split points during playback
-- Save/load work progress via config file
-- Split audio at marked points
+Create a Python GUI application for splitting audio files with automatic text association and the following specifications:
+
+## Required Libraries
+```python
+import tkinter as tk
+from tkinter import simpledialog
+from tkinter import filedialog, messagebox
+import pygame
+import wave
+import os
+from pydub import AudioSegment
+import threading
+import csv
+import glob
+import json
+import time
+from docx import Document
+import numpy as np
+import librosa
+import soundfile as sf
+from pathlib import Path
+```
+
+## Core Features Required
+
+### Audio Processing
+- Load and play MP3/WAV files
 - Convert segments to WAV (22050Hz, 16-bit, mono)
-- Configure starting segment number in config file (used only first time with empty output directory)
-- Continue numbering segments from last number after first run
-- Track last split position between sessions
+- Track playback position
+- Split audio at marked points
+- Save segments with continuous numbering
 
-2. GUI elements:
-- Create/Load config buttons
-- Play/Pause button
-- Mark Point button
-- Forward/Back 5s buttons
-- Progress slider
-- Time display (MM:SS)
-- Split points list
-- Remove point button
-- Split audio button
+### Document Processing
+- Load DOCX files
+- Split text by ':' character into sentences
+- Display as numbered list
+- Highlight current sentence
+- Auto-associate sentences with split points
 
-3. Config file (.json) structure:
+### State Management
+- Save/load progress via config.json
+- Remember last position
+- Track current sentence index
+- Maintain split points list
+- Continue from last state on reload
+
+### GUI Elements
+- Config management buttons (Create/Load)
+- Playback controls
+  * Play/Pause button (with Space hotkey hint)
+  * Mark Point button (with Enter hotkey hint)
+  * Forward/Back 5s buttons
+- Progress slider with time display
+- Split points list with remove option
+- Text display window with highlighting
+- Split Audio button
+
+### Hotkeys
+- Space: Play/Pause audio
+- Enter: Mark split point
+
+## Configuration File Structure
+```json
 {
-    "input_audio_file": path,
-    "output_directory": path,
-    "metadata_file": path,
+    "input_audio_file": "path/to/audio.mp3",
+    "output_directory": "path/to/output/dir",
+    "metadata_file": "path/to/metadata.csv",
+    "document_file": "path/to/document.docx",
     "split_points": [],
     "last_position": 0,
-    "start_segment_number": number  # Used only on first run
+    "start_segment_number": 1,
+    "current_sentence_index": 0
 }
+```
 
-4. Dependencies:
-- tkinter for GUI (including simpledialog)
-- pygame for audio playback
-- pydub for audio processing
-- Other standard libraries (json, csv, os, etc.)
+## Output Requirements
 
-5. Critical features:
-- NO autoplay when loading config or audio file
-- Remember last split position when restarting
-- Continue splitting from last position
-- Use start_segment_number only when output directory is empty
-- Maintain correct segment numbering after first run
-- Save split points as timestamps
-- Update metadata.csv with segment filenames
-- Convert to mono WAV with correct specs
+### Audio Segments
+- Format: WAV
+- Sample Rate: 22050 Hz
+- Bit Depth: 16-bit
+- Channels: Mono
+- Naming: segment_1.wav, segment_2.wav, etc.
 
-Please create this audio splitting application with exact implementation as specified, ensuring manual playback control and proper segment numbering based on config and directory state.
+### Metadata File
+- Format: CSV with '|' delimiter
+- Structure: filename|text
+- Example:
+  ```
+  filename|text
+  segment_1.wav|First sentence text
+  segment_2.wav|Second sentence text
+  ```
+
+## Critical Implementation Details
+
+### Initialization
+- NO autoplay when loading file
+- Load config settings
+- Initialize audio system
+- Set up GUI elements
+- Bind hotkeys
+
+### State Tracking
+- Save current_sentence_index in config
+- Update index when marking points
+- Track last split position
+- Maintain segment numbering sequence
+
+### Audio Processing
+- Start from last position on reload
+- Use start_segment_number only on first run
+- Convert to mono if stereo
+- Set correct sample rate and bit depth
+
+### Text Association
+- Auto-associate next sentence when marking
+- Highlight current sentence
+- Update highlight after marking
+- Store associations for metadata
+
+## User Workflow
+
+1. Initial Setup:
+   - Create new config OR load existing
+   - Select all required files
+   - Set starting segment number (if new)
+
+2. Operation:
+   - Press Space to play audio
+   - Navigate to split point
+   - Press Enter to mark (auto-pauses)
+   - System associates with next sentence
+   - Press Space to continue
+   - Repeat for all sentences
+
+3. Completion:
+   - Click Split Audio
+   - System creates WAV segments
+   - Updates metadata.csv
+   - Maintains state in config.json
+
+The implementation should follow exactly these specifications, ensuring proper audio handling, text association, and state management throughout the application lifecycle.
