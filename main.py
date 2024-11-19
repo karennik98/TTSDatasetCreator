@@ -39,6 +39,10 @@ class AudioSplitter:
         self.current_sentence_index = 0  # Track current sentence index
         self.text_selections = {}  # Initialize text selections dictionary
 
+        # Bind hotkeys
+        self.root.bind('<space>', lambda e: self.toggle_playback())
+        self.root.bind('<Return>', lambda e: self.mark_point())
+
         # Initialize pygame mixer
         pygame.mixer.init()
 
@@ -67,8 +71,10 @@ class AudioSplitter:
         self.controls_frame = tk.Frame(self.root)
         self.controls_frame.pack(pady=5)
 
-        tk.Button(self.controls_frame, text="Play/Pause", command=self.toggle_playback).pack(side=tk.LEFT, padx=5)
-        tk.Button(self.controls_frame, text="Mark Point", command=self.mark_point).pack(side=tk.LEFT, padx=5)
+        tk.Button(self.controls_frame, text="Play/Pause (Space)",
+                  command=self.toggle_playback).pack(side=tk.LEFT, padx=5)
+        tk.Button(self.controls_frame, text="Mark Point (Enter)",
+                  command=self.mark_point).pack(side=tk.LEFT, padx=5)
 
         # Add backward/forward buttons
         tk.Button(self.controls_frame, text="← 5s", command=lambda: self.seek_relative(-5)).pack(side=tk.LEFT, padx=5)
