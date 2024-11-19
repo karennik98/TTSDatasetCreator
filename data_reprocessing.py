@@ -56,15 +56,33 @@ def convert_mp3_to_wav(input_file, output_file):
     audio = AudioSegment.from_mp3(input_file)
     audio.export(output_file, format="wav")
 
+
+def split_audio(input_file, start_second, output_file):
+    # Load the audio file using pydub
+    audio = AudioSegment.from_file(input_file)
+
+    # Convert start_second to milliseconds
+    start_ms = start_second * 1000
+
+    # Split the audio from the specified start time to the end
+    split_audio = audio[start_ms:]
+
+    # Export the split audio to the output file
+    split_audio.export(output_file, format=os.path.splitext(output_file)[1][1:])
+
 def main():
-    input_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_1.mp3"
-    wav_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_1.wav"
-    mono_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_1_mono.wav"
+    # input_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_1.mp3"
+    # wav_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_1.wav"
+    # mono_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_1_mono.wav"
     output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_1.wav"
 
-    convert_mp3_to_wav(input_path, wav_output_path)
-    stereo_to_mono(wav_output_path, mono_output_path)
-    convert_wav_framerate(mono_output_path, output_path)
+    # convert_mp3_to_wav(input_path, wav_output_path)
+    # stereo_to_mono(wav_output_path, mono_output_path)
+    # convert_wav_framerate(mono_output_path, output_path)
+
+    splited_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_splited_1.wav"
+    start_second = 15
+    split_audio(output_path, start_second, splited_output_path)
 
 
 if __name__ == "__main__":

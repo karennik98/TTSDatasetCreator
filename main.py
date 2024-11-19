@@ -10,7 +10,7 @@ import csv
 import glob
 import json
 import time
-
+from docx import Document
 
 def has_files(directory_path):
     for item in os.listdir(directory_path):
@@ -33,6 +33,11 @@ class AudioSplitter:
         self.is_seeking = False
         self.config_file = None
         self.last_position = 0
+        self.text_selections = {}  # Add this to store text selections for each point
+        self.current_mark_time = None  # To track which point we're selecting text for
+        self.sentences = []  # Store split sentences
+        self.current_sentence_index = 0  # Track current sentence index
+        self.text_selections = {}  # Initialize text selections dictionary
 
         # Initialize pygame mixer
         pygame.mixer.init()
@@ -103,8 +108,64 @@ class AudioSplitter:
         tk.Button(self.buttons_frame, text="Split Audio",
                   command=self.split_audio).pack(side=tk.LEFT, padx=5)
 
+        # Text content frame
+        self.text_frame = tk.Frame(self.root)
+        self.text_frame.pack(pady=5, padx=10, fill=tk.BOTH, expand=True)
+
+        # Text content label
+        tk.Label(self.text_frame, text="Document Text:").pack(anchor=tk.W)
+
+        # Text widget with scrollbar
+        self.text_scroll = tk.Scrollbar(self.text_frame)
+        self.text_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.text_widget = tk.Text(self.text_frame, height=10,
+                                   yscrollcommand=self.text_scroll.set)
+        self.text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.text_scroll.config(command=self.text_widget.yview)
+
+        # Store selected text for current point
+        self.current_text_selection = None
+
         # Bind window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def load_document(self, doc_file=None):
+        """Load text from doc/docx file and split by ':'"""
+        if doc_file is None:
+            doc_file = filedialog.askopenfilename(
+                title="Select Document File",
+                filetypes=[("Word Documents", "*.doc *.docx")])
+            if not doc_file:
+                return
+
+        try:
+            doc = Document(doc_file)
+            # Extract and concatenate all text
+            full_text = ' '.join([paragraph.text for paragraph in doc.paragraphs])
+
+            # Split by ':' and clean sentences
+            self.sentences = [sent.strip() for sent in full_text.split(':') if sent.strip()]
+
+            # Clear and update text widget
+            self.text_widget.delete('1.0', tk.END)
+
+            # Display sentences as numbered list
+            for i, sentence in enumerate(self.sentences, 1):
+                self.text_widget.insert(tk.END, f"{i}. {sentence}\n\n")
+
+            print(f"Loaded {len(self.sentences)} sentences")  # Debug info
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load document: {str(e)}")
+
+    def get_selected_text(self):
+        """Get selected text from text widget"""
+        try:
+            return self.text_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+        except tk.TclError:  # No selection
+            return None
+
 
     def create_new_config(self):
         """Create a new configuration file with all necessary paths"""
@@ -128,14 +189,24 @@ class AudioSplitter:
         if not metadata_file:
             return
 
-        # Create initial config with default start_segment_number
+        # Get document file
+        document_file = filedialog.askopenfilename(
+            title="Select Document File",
+            filetypes=[("Word Documents", "*.doc *.docx")])
+        if not document_file:
+            return
+
+        # Create initial config with document file
         config = {
             "input_audio_file": audio_file,
             "output_directory": output_dir,
             "metadata_file": metadata_file,
+            "document_file": document_file,
             "split_points": [],
             "last_position": 0,
-            "start_segment_number": 1  # Default value
+            "start_segment_number": 1,
+            "current_sentence_index": 0,
+            "text_selections": {}
         }
 
         # Get starting segment number from user
@@ -167,6 +238,7 @@ class AudioSplitter:
         if config_file:
             self.config_file = config_file
             self.load_config_file(config_file)
+            self.highlight_current_sentence()
 
     def load_config_file(self, config_file):
         """Load settings from config file and initialize audio"""
@@ -176,6 +248,7 @@ class AudioSplitter:
         self.audio_file = config["input_audio_file"]
         self.output_dir = config["output_directory"]
         self.metadata_file = config["metadata_file"]
+        self.document_file = config["document_file"]
         self.split_points = config["split_points"]
 
         # Set initial position
@@ -185,6 +258,12 @@ class AudioSplitter:
             self.current_position = config.get("last_position", 0)
 
         self.last_position = self.current_position
+
+        # Load the sentence index from config
+        self.current_sentence_index = config.get("current_sentence_index", 0)
+
+        print("current_sentence_index: ", self.current_sentence_index)
+
 
         # Update file label
         self.file_label.config(text=f"Current file: {os.path.basename(self.audio_file)}")
@@ -196,9 +275,15 @@ class AudioSplitter:
 
             # Set position without starting playback
             self.progress_var.set(self.current_position)
-            self.playing = False  # Ensure playback is off
+            self.playing = False
         else:
             messagebox.showerror("Error", "Audio file not found!")
+
+        # Load document file
+        if os.path.exists(self.document_file):
+            self.load_document(self.document_file)
+        else:
+            messagebox.showerror("Error", "Document file not found!")
 
     def format_time(self, seconds):
         """Convert seconds to MM:SS format"""
@@ -268,21 +353,65 @@ class AudioSplitter:
 
         # Get exact current time from slider
         current_time = self.progress_var.get()
-        current_time = round(current_time, 3)  # Round to 3 decimal places
+        current_time = round(current_time, 3)
 
         # Don't add duplicate points
         if self.split_points and abs(current_time - self.split_points[-1]) < 0.1:
             return
+
+        # First pause audio
+        if self.playing:
+            self.toggle_playback()
 
         # Add point to list and display
         self.split_points.append(current_time)
         self.split_points.sort()
         self.update_points_display()
 
-        print(f"Marked point at: {current_time} seconds")  # Debug info
+        # Associate with current sentence
+        if self.current_sentence_index < len(self.sentences):
+            self.text_selections[current_time] = self.sentences[self.current_sentence_index]
+            self.current_sentence_index += 1
 
-        # Save state
+            # Highlight current sentence in text widget
+            self.highlight_current_sentence()
+
+            messagebox.showinfo("Marked",
+                                f"Point marked and associated with sentence {self.current_sentence_index}")
+        else:
+            messagebox.showwarning("Warning", "No more sentences to associate!")
+
         self.save_current_state()
+
+    def highlight_current_sentence(self):
+        """Highlight the current sentence in text widget"""
+        self.text_widget.tag_remove('highlight', '1.0', tk.END)
+        if self.current_sentence_index < len(self.sentences):
+            # Search for the sentence in text widget
+            start = '1.0'
+            while True:
+                pos = self.text_widget.search(f"{self.current_sentence_index + 1}. ", start, tk.END)
+                if not pos:
+                    break
+                line_end = self.text_widget.index(f"{pos} lineend")
+                self.text_widget.tag_add('highlight', pos, line_end)
+                break
+
+            # Configure highlight tag
+            self.text_widget.tag_config('highlight', background='yellow')
+
+    def save_current_state(self):
+        """Save current state to config file"""
+        if self.config_file and os.path.exists(self.config_file):
+            with open(self.config_file, 'r') as f:
+                config = json.load(f)
+
+            config["split_points"] = self.split_points
+            config["last_position"] = max(self.split_points) if self.split_points else self.current_position
+            config["current_sentence_index"] = self.current_sentence_index  # Save just the index
+
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f, indent=4)
 
     def update_points_display(self):
         self.points_listbox.delete(0, tk.END)
@@ -321,6 +450,7 @@ class AudioSplitter:
 
             config["split_points"] = self.split_points
             config["last_position"] = max(self.split_points) if self.split_points else self.current_position
+            config["current_sentence_index"] = self.current_sentence_index  # Save just the index
 
             with open(self.config_file, 'w') as f:
                 json.dump(config, f, indent=4)
@@ -361,73 +491,80 @@ class AudioSplitter:
             return
 
         try:
-            # Get starting segment number
             start_number = self.get_next_segment_number()
             print("start_number: ", start_number)
 
-            # Prepare metadata list
             metadata = []
-
-            # Add 0 as the starting point and get all segments
             points_t = [0] + self.split_points
-            print("Split points_t:", points_t)  # Debug info
+            print("Split points_t:", points_t)
 
             points = points_t[points_t.index(self.last_position):]
-
-            print("Split points:", points)  # Debug info
+            print("Split points:", points)
 
             # Split audio file into segments
             for i in range(len(points) - 1):
-                start_time = int(points[i] * 1000)  # Convert to milliseconds
+                start_time = int(points[i] * 1000)
                 end_time = int(points[i + 1] * 1000)
 
-                print(f"Splitting segment {i + 1}: {start_time}ms to {end_time}ms")  # Debug info
+                print(f"Splitting segment {i + 1}: {start_time}ms to {end_time}ms")
 
-                # Extract segment
                 segment = self.audio[start_time:end_time]
 
-                # Convert to mono if stereo
                 if segment.channels > 1:
                     segment = segment.set_channels(1)
 
-                # Set sample rate and bit depth
                 segment = segment.set_frame_rate(22050)
-                segment = segment.set_sample_width(2)  # 16-bit
+                segment = segment.set_sample_width(2)
 
-                # Generate output filename
                 segment_number = start_number + i
                 output_filename = f"segment_{segment_number}.wav"
                 output_path = os.path.join(self.output_dir, output_filename)
 
-                # Export segment
                 segment.export(
                     output_path,
                     format="wav",
                     parameters=[
-                        "-ar", "22050",  # Sample rate
-                        "-ac", "1",  # Mono
-                        "-acodec", "pcm_s16le"  # 16-bit PCM
+                        "-ar", "22050",
+                        "-ac", "1",
+                        "-acodec", "pcm_s16le"
                     ]
                 )
 
-                print(f"Exported: {output_filename}")  # Debug info
+                print(f"Exported: {output_filename}")
 
-                # Add to metadata
-                metadata.append([output_filename])
+                # Get the text for this segment - using end point to get text
+                end_point = points[i + 1]
+                selected_text = self.text_selections.get(end_point, "")
 
-            # Append to metadata file
+                # Clean the text
+                if selected_text:
+                    selected_text = selected_text.strip()
+                    selected_text = selected_text.replace('|', ' ')
+
+                metadata.append([output_filename, selected_text])
+
+            # Write metadata with proper formatting
             file_exists = os.path.exists(self.metadata_file)
-            with open(self.metadata_file, 'a', newline='') as f:
-                writer = csv.writer(f)
+            with open(self.metadata_file, 'a', newline='', encoding='utf-8') as f:
+                csv.register_dialect('custom',
+                                     delimiter='|',
+                                     quoting=csv.QUOTE_MINIMAL,
+                                     escapechar='\\',
+                                     quotechar='"'
+                                     )
+
+                writer = csv.writer(f, dialect='custom')
                 if not file_exists:
-                    writer.writerow(['filename'])  # Add header if it's a new file
-                writer.writerows(metadata)
+                    writer.writerow(['filename', 'text'])
+
+                for row in metadata:
+                    writer.writerow(row)
 
             num_segments = len(metadata)
             messagebox.showinfo("Success", f"Audio file has been split into {num_segments} segments successfully!")
 
         except Exception as e:
-            print(f"Error during splitting: {str(e)}")  # Debug info
+            print(f"Error during splitting: {str(e)}")
             messagebox.showerror("Error", f"An error occurred while splitting: {str(e)}")
 
 
