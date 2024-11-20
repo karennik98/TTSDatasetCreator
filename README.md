@@ -1,18 +1,32 @@
-# Audio Splitter with Text Association
+# Audio Splitter with Text Association and Intelligent Marking
 
-A Python application for splitting audio files and associating segments with text from a Word document. Designed for creating paired audio-text segments, particularly useful for speech datasets or transcription projects.
+A Python application for splitting audio files with intelligent silence detection and text association.
 
 ## Features
 
+### Core Features
 - Load and split MP3/WAV audio files
 - Load and parse DOCX files by sentences (split by ":")
-- Mark split points during audio playback
+- Mark split points with intelligent silence detection
 - Automatic text-to-audio segment association
-- Convert segments to WAV format (22050Hz, 16-bit, mono)
 - Save/resume work progress via config file
-- Track split points and positions between sessions
-- Configurable starting segment number
-- Hotkeys for main controls
+
+### Intelligent Marking System
+- Automatically finds optimal split points
+- Analyzes ±1 second around marked position
+- Detects silence regions
+- Places split points in middle of silence
+- Falls back to manual position if no silence found
+
+### Audio Processing
+- Converts segments to WAV (22050Hz, 16-bit, mono)
+- Configurable silence detection threshold
+- Maintains continuous segment numbering
+- Tracks split positions between sessions
+
+### Hotkeys
+- Space: Play/Pause
+- Enter: Mark Point (with intelligent positioning)
 
 ## Installation
 
@@ -22,87 +36,63 @@ git clone https://github.com/yourusername/audio-splitter.git
 cd audio-splitter
 ```
 
-2. Create a virtual environment (recommended):
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-### Hotkeys
-- `Space`: Play/Pause audio
-- `Enter`: Mark split point
-
-### First Time Setup
-
-1. Launch the application:
-```bash
-python audio_splitter.py
-```
-
-2. Click "Create New Config" and select:
-   - Input audio file (MP3 or WAV)
-   - Output directory for segments
-   - Metadata CSV file location
+### Initial Setup
+1. Launch the application
+2. Click "Create New Config"
+3. Select required files:
+   - Input audio (MP3/WAV)
+   - Output directory
+   - Metadata CSV location
    - Word document (.docx)
-   - Enter starting segment number
+4. Enter starting segment number
 
 ### Working Process
+1. Document is split by ":" into sentences
+2. Play audio (Space)
+3. When ready to split:
+   - Press Enter or click "Mark Point"
+   - System analyzes audio around marked position
+   - Finds optimal split point in silence region
+   - Automatically associates with next sentence
+4. Continue playing (Space)
+5. Repeat mark/associate process
 
-1. **Document Processing**:
-   - Document text is automatically split by ":" character
-   - Sentences are displayed as numbered list
-   - Current sentence is highlighted
-
-2. **Audio Marking**:
-   - Play audio (Space)
-   - Navigate to split point
-   - Mark point (Enter)
-   - System automatically associates marked point with current sentence
-   - Repeat for all sentences
-
-3. **Creating Segments**:
-   - Click "Split Audio" when done marking
-   - Program creates:
-     * WAV segments in output directory
-     * Metadata CSV with filename|text pairs
-
-### Resuming Work
-
-1. Click "Load Config"
-2. Select previous config file
-3. Program resumes:
-   - Shows document with sentences
-   - Highlights next sentence
-   - Positions audio at last split point
-   - Maintains split point history
+### Intelligent Marking
+The system:
+1. Checks marked point for silence
+2. If not silent:
+   - Analyzes ±1 second window
+   - Finds silence regions
+   - Uses middle of longest silence
+3. If no silence found:
+   - Uses original marked point
+4. Continues playback from adjusted position
 
 ### Output Files
-
 1. Audio Segments:
-   - Format: WAV
-   - Sample Rate: 22050 Hz
-   - Bit Depth: 16-bit
-   - Channels: Mono
-   - Naming: segment_1.wav, segment_2.wav, etc.
+   - WAV format
+   - 22050 Hz sample rate
+   - 16-bit depth
+   - Mono channel
+   - Named: segment_1.wav, segment_2.wav, etc.
 
-2. Metadata File (CSV):
-   - Format: filename|text
-   - Example:
-     ```
-     filename|text
-     segment_1.wav|First sentence text
-     segment_2.wav|Second sentence text
-     ```
+2. Metadata File:
+```
+filename|text
+segment_1.wav|First sentence text
+segment_2.wav|Second sentence text
+```
 
-## Config File Structure
+## Configuration
 
+### Config File Structure
 ```json
 {
     "input_audio_file": "path/to/audio.mp3",
@@ -116,18 +106,15 @@ python audio_splitter.py
 }
 ```
 
-## Requirements
+## Technical Notes
 
-See requirements.txt for detailed dependencies.
-- Python 3.9+
-- pygame
-- pydub
-- python-docx
-- tkinter (usually comes with Python)
+### Silence Detection Parameters
+- Window Size: ±1 second around marked point
+- Chunk Size: 50ms for analysis
+- Default Silence Threshold: -50dB
+- Adjustable through code configuration
 
-## Notes
-
-- Input text documents should use ":" as sentence delimiter
-- Program automatically tracks last position between sessions
-- Split points are saved automatically
-- Segments are numbered continuously across sessions
+### Performance Considerations
+- Real-time analysis of audio segments
+- Efficient chunk-based processing
+- Fallback mechanism for non-silent sections

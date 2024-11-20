@@ -1,12 +1,11 @@
-# Audio Splitter Application Prompt
+# Audio Splitter Application with Intelligent Marking
 
-Create a Python GUI application for splitting audio files with automatic text association and the following specifications:
+Create a Python GUI application for splitting audio files with intelligent silence detection and the following specifications:
 
 ## Required Libraries
 ```python
 import tkinter as tk
-from tkinter import simpledialog
-from tkinter import filedialog, messagebox
+from tkinter import simpledialog, filedialog, messagebox
 import pygame
 import wave
 import os
@@ -17,10 +16,6 @@ import glob
 import json
 import time
 from docx import Document
-import numpy as np
-import librosa
-import soundfile as sf
-from pathlib import Path
 ```
 
 ## Core Features Required
@@ -28,46 +23,70 @@ from pathlib import Path
 ### Audio Processing
 - Load and play MP3/WAV files
 - Convert segments to WAV (22050Hz, 16-bit, mono)
+- Intelligent silence detection for marking points
 - Track playback position
-- Split audio at marked points
-- Save segments with continuous numbering
+- Split audio at optimized points
+
+### Intelligent Marking System
+- Analyze ±1 second around marked point
+- Detect silence regions using dB levels
+- Find optimal split points in silence
+- Fall back to manual points if needed
+- Continue playback from adjusted position
 
 ### Document Processing
 - Load DOCX files
-- Split text by ':' character into sentences
+- Split text by ':' character
 - Display as numbered list
 - Highlight current sentence
-- Auto-associate sentences with split points
+- Auto-associate with split points
 
 ### State Management
 - Save/load progress via config.json
 - Remember last position
 - Track current sentence index
 - Maintain split points list
-- Continue from last state on reload
+- Continue from last state
 
 ### GUI Elements
-- Config management buttons (Create/Load)
-- Playback controls
-  * Play/Pause button (with Space hotkey hint)
-  * Mark Point button (with Enter hotkey hint)
-  * Forward/Back 5s buttons
+- Config management buttons
+- Playback controls with hotkey hints
 - Progress slider with time display
-- Split points list with remove option
-- Text display window with highlighting
-- Split Audio button
+- Split points list
+- Text display with highlighting
+- Status feedback for adjustments
 
 ### Hotkeys
-- Space: Play/Pause audio
-- Enter: Mark split point
+- Space: Play/Pause
+- Enter: Mark point (with intelligent positioning)
 
-## Configuration File Structure
+## Implementation Requirements
+
+### Silence Detection
+```python
+def find_silence_point(self, marked_time, window_size=1.0, silence_threshold=-50):
+    """
+    Analyze audio around marked point for optimal split position
+    Return adjusted time in silence region or original if none found
+    """
+```
+
+### Point Marking
+```python
+def mark_point(self, event=None):
+    """
+    Handle point marking with intelligent positioning
+    Find silence, adjust point, update UI, continue playback
+    """
+```
+
+### Configuration Structure
 ```json
 {
-    "input_audio_file": "path/to/audio.mp3",
-    "output_directory": "path/to/output/dir",
-    "metadata_file": "path/to/metadata.csv",
-    "document_file": "path/to/document.docx",
+    "input_audio_file": "path",
+    "output_directory": "path",
+    "metadata_file": "path",
+    "document_file": "path",
     "split_points": [],
     "last_position": 0,
     "start_segment_number": 1,
@@ -75,71 +94,30 @@ from pathlib import Path
 }
 ```
 
-## Output Requirements
-
-### Audio Segments
-- Format: WAV
-- Sample Rate: 22050 Hz
-- Bit Depth: 16-bit
-- Channels: Mono
-- Naming: segment_1.wav, segment_2.wav, etc.
-
-### Metadata File
-- Format: CSV with '|' delimiter
-- Structure: filename|text
-- Example:
-  ```
-  filename|text
-  segment_1.wav|First sentence text
-  segment_2.wav|Second sentence text
-  ```
-
-## Critical Implementation Details
+## Critical Features
 
 ### Initialization
-- NO autoplay when loading file
-- Load config settings
+- Load all required files
 - Initialize audio system
-- Set up GUI elements
+- Set up silence detection
 - Bind hotkeys
 
-### State Tracking
-- Save current_sentence_index in config
-- Update index when marking points
-- Track last split position
-- Maintain segment numbering sequence
-
 ### Audio Processing
-- Start from last position on reload
-- Use start_segment_number only on first run
-- Convert to mono if stereo
-- Set correct sample rate and bit depth
+- Real-time silence analysis
+- Efficient chunk processing
+- Proper format conversion
+- Accurate split point placement
 
-### Text Association
-- Auto-associate next sentence when marking
-- Highlight current sentence
-- Update highlight after marking
-- Store associations for metadata
+### UI/UX
+- Smooth playback transitions
+- Clear feedback on adjustments
+- Proper position tracking
+- Responsive controls
 
-## User Workflow
+### State Management
+- Save adjusted points
+- Track sentence associations
+- Maintain splitting sequence
+- Handle session persistence
 
-1. Initial Setup:
-   - Create new config OR load existing
-   - Select all required files
-   - Set starting segment number (if new)
-
-2. Operation:
-   - Press Space to play audio
-   - Navigate to split point
-   - Press Enter to mark (auto-pauses)
-   - System associates with next sentence
-   - Press Space to continue
-   - Repeat for all sentences
-
-3. Completion:
-   - Click Split Audio
-   - System creates WAV segments
-   - Updates metadata.csv
-   - Maintains state in config.json
-
-The implementation should follow exactly these specifications, ensuring proper audio handling, text association, and state management throughout the application lifecycle.
+Create this enhanced audio splitter application with intelligent marking system, ensuring smooth operation and proper audio analysis for optimal split points.
