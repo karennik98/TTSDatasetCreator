@@ -105,6 +105,9 @@ class AudioSplitter:
         self.points_listbox = tk.Listbox(self.points_frame, height=6)
         self.points_listbox.pack(fill=tk.X)
 
+        self.status_label = tk.Label(self.root, text="", wraplength=400)
+        self.status_label.pack(pady=5)
+
         # Buttons frame
         self.buttons_frame = tk.Frame(self.root)
         self.buttons_frame.pack(pady=5)
@@ -135,6 +138,12 @@ class AudioSplitter:
 
         # Bind window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+
+    def update_status(self, message):
+        self.status_label.config(text=message)
+        self.root.update()
+
 
     def load_document(self, doc_file=None):
         """Load text from doc/docx file and split by ':'"""
@@ -353,7 +362,69 @@ class AudioSplitter:
             pygame.mixer.music.play(start=self.current_position)
             self.playing = True
 
-    def mark_point(self):
+    def find_silence_point(self, marked_time, window_size=1.0, silence_threshold=-50):
+        """
+        Find closest silence point within window around marked time.
+        window_size: Size of window to check on each side (in seconds)
+        silence_threshold: dB threshold for silence detection
+        """
+        try:
+            # Convert time to milliseconds
+            mark_ms = int(marked_time * 1000)
+            window_ms = int(window_size * 1000)
+
+            # Extract window of audio around marked point
+            start_ms = max(0, mark_ms - window_ms)
+            end_ms = min(len(self.audio), mark_ms + window_ms)
+
+            audio_segment = self.audio[start_ms:end_ms]
+
+            # Split into small chunks for analysis
+            chunk_size = 50  # 50ms chunks
+            chunks = [audio_segment[i:i + chunk_size] for i in range(0, len(audio_segment), chunk_size)]
+
+            # Find chunks with silence
+            silent_chunks = []
+            for i, chunk in enumerate(chunks):
+                if chunk.dBFS < silence_threshold:
+                    chunk_time = start_ms + (i * chunk_size)
+                    silent_chunks.append((chunk_time, chunk.dBFS))
+
+            if silent_chunks:
+                # Find longest sequence of silent chunks
+                silent_regions = []
+                current_region = [silent_chunks[0]]
+
+                for i in range(1, len(silent_chunks)):
+                    if silent_chunks[i][0] - silent_chunks[i - 1][0] <= chunk_size:
+                        current_region.append(silent_chunks[i])
+                    else:
+                        if len(current_region) > 1:
+                            silent_regions.append(current_region)
+                        current_region = [silent_chunks[i]]
+
+                if len(current_region) > 1:
+                    silent_regions.append(current_region)
+
+                if silent_regions:
+                    # Get the longest silent region
+                    longest_region = max(silent_regions, key=len)
+                    # Use middle of the longest silent region
+                    start_time = longest_region[0][0]
+                    end_time = longest_region[-1][0]
+                    middle_time = (start_time + end_time) / 2000  # Convert back to seconds
+
+                    print(f"Found silence: original={marked_time:.3f}s, adjusted={middle_time:.3f}s")
+                    return middle_time
+
+            print(f"No suitable silence found, using original time: {marked_time:.3f}s")
+            return marked_time
+
+        except Exception as e:
+            print(f"Error in silence detection: {str(e)}")
+            return marked_time
+
+    def mark_point(self, event=None):
         if not self.audio_file:
             return
 
@@ -369,21 +440,28 @@ class AudioSplitter:
         if self.playing:
             self.toggle_playback()
 
-        # Add point to list and display
-        self.split_points.append(current_time)
+        # Find best split point
+        adjusted_time = self.find_silence_point(current_time)
+
+        # Add adjusted point to list and display
+        self.split_points.append(adjusted_time)
         self.split_points.sort()
         self.update_points_display()
 
+        # Update current position to the adjusted time
+        self.current_position = adjusted_time
+        self.progress_var.set(adjusted_time)
+
         # Associate with current sentence
         if self.current_sentence_index < len(self.sentences):
-            self.text_selections[current_time] = self.sentences[self.current_sentence_index]
+            self.text_selections[adjusted_time] = self.sentences[self.current_sentence_index]
             self.current_sentence_index += 1
 
             # Highlight current sentence in text widget
             self.highlight_current_sentence()
 
             messagebox.showinfo("Marked",
-                                f"Point marked and associated with sentence {self.current_sentence_index}")
+                                f"Point marked at {self.format_time(adjusted_time)} and associated with sentence {self.current_sentence_index}")
         else:
             messagebox.showwarning("Warning", "No more sentences to associate!")
 
