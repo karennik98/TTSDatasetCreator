@@ -579,11 +579,23 @@ class AudioSplitter:
             print("start_number: ", start_number)
 
             metadata = []
-            points_t = [0] + self.split_points
-            print("Split points_t:", points_t)
+            # Get all points including 0 as start
+            all_points = [0] + self.split_points
 
-            points = points_t[points_t.index(self.last_position):]
-            print("Split points:", points)
+            # Find the index of the last processed position
+            if self.last_position in all_points:
+                start_idx = all_points.index(self.last_position)
+            else:
+                # If last_position isn't in points, find the nearest lower point
+                valid_points = [p for p in all_points if p <= self.last_position]
+                if valid_points:
+                    start_idx = all_points.index(max(valid_points))
+                else:
+                    start_idx = 0
+
+            # Get only the unprocessed points
+            points = all_points[start_idx:]
+            print(f"Processing points from index {start_idx}: {points}")
 
             # Split audio file into segments
             for i in range(len(points) - 1):
@@ -643,6 +655,10 @@ class AudioSplitter:
 
                 for row in metadata:
                     writer.writerow(row)
+
+            # Update last_position to the last processed point
+            self.last_position = points[-1]
+            self.save_current_state()  # Save the updated last_position
 
             num_segments = len(metadata)
             messagebox.showinfo("Success", f"Audio file has been split into {num_segments} segments successfully!")
