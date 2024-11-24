@@ -71,10 +71,10 @@ def split_audio(input_file, start_second, output_file):
     split_audio.export(output_file, format=os.path.splitext(output_file)[1][1:])
 
 def main():
-    input_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_2.mp3"
-    wav_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_2.wav"
-    mono_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_2_mono.wav"
-    output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_2.wav"
+    input_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_3.mp3"
+    wav_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_3.wav"
+    mono_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_3_mono.wav"
+    output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_3.wav"
 
     convert_mp3_to_wav(input_path, wav_output_path)
     stereo_to_mono(wav_output_path, mono_output_path)

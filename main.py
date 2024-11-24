@@ -144,7 +144,6 @@ class AudioSplitter:
         self.status_label.config(text=message)
         self.root.update()
 
-
     def load_document(self, doc_file=None):
         """Load text from doc/docx file and split by ':'"""
         if doc_file is None:
@@ -155,6 +154,11 @@ class AudioSplitter:
                 return
 
         try:
+            # Get starting number from config
+            with open(self.config_file, 'r') as f:
+                config = json.load(f)
+            start_number = config.get('start_segment_number', 1)  # Get start number, default to 1
+
             doc = Document(doc_file)
             # Extract and concatenate all text
             full_text = ' '.join([paragraph.text for paragraph in doc.paragraphs])
@@ -165,11 +169,11 @@ class AudioSplitter:
             # Clear and update text widget
             self.text_widget.delete('1.0', tk.END)
 
-            # Display sentences as numbered list
-            for i, sentence in enumerate(self.sentences, 1):
+            # Display sentences starting from config number
+            for i, sentence in enumerate(self.sentences, start=start_number):
                 self.text_widget.insert(tk.END, f"{i}. {sentence}\n\n")
 
-            print(f"Loaded {len(self.sentences)} sentences")  # Debug info
+            print(f"Loaded {len(self.sentences)} sentences starting from {start_number}")
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load document: {str(e)}")
@@ -362,7 +366,7 @@ class AudioSplitter:
             pygame.mixer.music.play(start=self.current_position)
             self.playing = True
 
-    def find_silence_point(self, marked_time, window_size=1.0, silence_threshold=-50):
+    def find_silence_point(self, marked_time, window_size=0.5, silence_threshold=-50):
         """
         Find closest silence point within window around marked time.
         window_size: Size of window to check on each side (in seconds)
@@ -470,11 +474,20 @@ class AudioSplitter:
     def highlight_current_sentence(self):
         """Highlight the current sentence in text widget"""
         self.text_widget.tag_remove('highlight', '1.0', tk.END)
+
         if self.current_sentence_index < len(self.sentences):
+            # Get starting number from config
+            with open(self.config_file, 'r') as f:
+                config = json.load(f)
+            start_number = config.get('start_segment_number', 1)
+
+            # Calculate actual sentence number
+            display_number = start_number + self.current_sentence_index
+
             # Search for the sentence in text widget
             start = '1.0'
             while True:
-                pos = self.text_widget.search(f"{self.current_sentence_index + 1}. ", start, tk.END)
+                pos = self.text_widget.search(f"{display_number}. ", start, tk.END)
                 if not pos:
                     break
                 line_end = self.text_widget.index(f"{pos} lineend")
