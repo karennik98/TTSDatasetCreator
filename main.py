@@ -164,7 +164,7 @@ class AudioSplitter:
             full_text = ' '.join([paragraph.text for paragraph in doc.paragraphs])
 
             # Split by ':' and clean sentences
-            self.sentences = [sent.strip() for sent in full_text.split(':') if sent.strip()]
+            self.sentences = [sent.strip() for sent in full_text.split('։') if sent.strip()]
 
             # Clear and update text widget
             self.text_widget.delete('1.0', tk.END)
