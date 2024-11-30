@@ -71,18 +71,18 @@ def split_audio(input_file, start_second, output_file):
     split_audio.export(output_file, format=os.path.splitext(output_file)[1][1:])
 
 def main():
-    input_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_7.mp3"
-    wav_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_7.wav"
-    mono_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_7_mono.wav"
-    output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_7.wav"
+    input_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_8.mp3"
+    wav_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_8.wav"
+    mono_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_8_mono.wav"
+    output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_8.wav"
 
     convert_mp3_to_wav(input_path, wav_output_path)
     stereo_to_mono(wav_output_path, mono_output_path)
     convert_wav_framerate(mono_output_path, output_path)
-
-    splited_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_splited_7.wav"
-    start_second = 6
-    split_audio(output_path, start_second, splited_output_path)
+    #
+    # splited_output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_splited_7.wav"
+    # start_second = 6
+    # split_audio(output_path, start_second, splited_output_path)
 
 
 if __name__ == "__main__":

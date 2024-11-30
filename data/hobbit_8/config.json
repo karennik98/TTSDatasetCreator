@@ -1,0 +1,13 @@
+{
+    "input_audio_file": "C:/Users/karenn/PhD/TTSDatasetCreator/data/hobbit_8/hobbit_8.wav",
+    "output_directory": "C:/Users/karenn/PhD/TTSDatasetCreator/data/hobbit_8/wav",
+    "metadata_file": "C:/Users/karenn/PhD/TTSDatasetCreator/data/hobbit_8/metadata.csv",
+    "document_file": "C:/Users/karenn/PhD/TTSDatasetCreator/data/hobbit_8/hobbit_8.docx",
+    "split_points": [
+        6.413
+    ],
+    "last_position": 6.413,
+    "start_segment_number": 1064,
+    "current_sentence_index": 1,
+    "text_selections": {}
+}
