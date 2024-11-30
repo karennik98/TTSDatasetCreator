@@ -624,7 +624,7 @@ class AudioSplitter:
                 start_time = int(points[i] * 1000)
                 end_time = int(points[i + 1] * 1000)
 
-                print(f"Splitting segment {i + 1}: {start_time}ms to {end_time}ms")
+                # print(f"Splitting segment {i + 1}: {start_time}ms to {end_time}ms")
 
                 segment = self.audio[start_time:end_time]
 
@@ -648,7 +648,7 @@ class AudioSplitter:
                     ]
                 )
 
-                print(f"Exported: {output_filename}")
+                # print(f"Exported: {output_filename}")
 
                 # Get the text for this segment - using end point to get text
                 end_point = points[i + 1]
