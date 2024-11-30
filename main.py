@@ -366,7 +366,7 @@ class AudioSplitter:
             pygame.mixer.music.play(start=self.current_position)
             self.playing = True
 
-    def find_silence_point(self, marked_time, window_size=0.5, silence_threshold=-50):
+    def find_silence_point(self, marked_time, window_size=1, silence_threshold=-50):
         """
         Find closest silence point within window around marked time.
         window_size: Size of window to check on each side (in seconds)
@@ -376,6 +376,15 @@ class AudioSplitter:
             # Convert time to milliseconds
             mark_ms = int(marked_time * 1000)
             window_ms = int(window_size * 1000)
+
+            # First we try to understand is marked point silence point or not
+            marked_start_ms = max(0, mark_ms - 10)
+            marked_end_ms = min(len(self.audio), mark_ms + 10)
+            marked_audio_segment = self.audio[marked_start_ms:marked_end_ms]
+            dB = marked_audio_segment.dBFS
+            print("Marked point dBFS: ", dB)
+            if dB < -45:
+                return marked_time
 
             # Extract window of audio around marked point
             start_ms = max(0, mark_ms - window_ms)
