@@ -12,6 +12,65 @@ import json
 import time
 from docx import Document
 
+import logging
+from dataclasses import dataclass
+from typing import List, Tuple, Optional
+from datetime import datetime
+import json
+
+
+@dataclass
+class SilenceAnalysisResult:
+    timestamp: str
+    marked_time: float
+    marked_point_dbfs: float
+    window_size: float
+    silence_threshold: float
+    silent_regions: List[List[Tuple[float, float]]]
+    longest_region_length: Optional[float] = None
+    adjusted_time: Optional[float] = None
+    adjusted_point_dbfs: Optional[float] = None
+    status: str = "success"
+    error: Optional[str] = None
+
+
+class SilenceDetectionLogger:
+    def __init__(self, log_file="silence_detection.log"):
+        self.logger = logging.getLogger("silence_detection")
+        self.logger.setLevel(logging.DEBUG)
+
+        # File handler for detailed logging
+        fh = logging.FileHandler(log_file)
+        fh.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+
+        # Store analysis results
+        self.analysis_results = []
+
+    def log_analysis(self, result: SilenceAnalysisResult):
+        self.analysis_results.append(result)
+        self.logger.info(json.dumps(result.__dict__))
+
+    def get_statistics(self):
+        if not self.analysis_results:
+            return {}
+
+        stats = {
+            "total_analyses": len(self.analysis_results),
+            "successful_analyses": len([r for r in self.analysis_results if r.status == "success"]),
+            "failed_analyses": len([r for r in self.analysis_results if r.status == "error"]),
+            "avg_marked_point_dbfs": sum(r.marked_point_dbfs for r in self.analysis_results) / len(
+                self.analysis_results),
+            "avg_adjustment": sum(
+                abs(r.adjusted_time - r.marked_time)
+                for r in self.analysis_results
+                if r.adjusted_time is not None
+            ) / len(self.analysis_results),
+        }
+        return stats
+
 def has_files(directory_path):
     for item in os.listdir(directory_path):
         if os.path.isfile(os.path.join(directory_path, item)):
@@ -144,8 +203,80 @@ class AudioSplitter:
         self.status_label.config(text=message)
         self.root.update()
 
+    def count_valid_words(self, sentence, min_char_length=4):
+        """
+        Count words in a sentence that meet the minimum character length requirement.
+
+        Args:
+            sentence (str): Sentence to analyze
+            min_char_length (int): Minimum number of characters for a word to be counted
+
+        Returns:
+            int: Number of valid words
+        """
+        # Split into words and filter out punctuation and whitespace
+        words = [word.strip('.,!?()[]{}։«»՝—…;:') for word in sentence.split()]
+
+        # Count words that meet the minimum length requirement
+        valid_words = [word for word in words if len(word) >= min_char_length]
+
+        return len(valid_words)
+
+    def merge_short_sentences(self, sentences, min_words=3, min_char_length=4):
+        """
+        Merge sentences that have fewer valid words than the minimum threshold.
+        A valid word must have at least the specified minimum character length.
+
+        Args:
+            sentences (list): List of sentences to process
+            min_words (int): Minimum number of valid words required to keep sentence separate
+            min_char_length (int): Minimum number of characters for a word to be counted
+
+        Returns:
+            list: Processed sentences with short ones merged
+        """
+        if not sentences:
+            return []
+
+        merged = []
+        temp_sentence = ""
+
+        for i, sentence in enumerate(sentences):
+            # If we have a temporary sentence, prepend it to current sentence
+            if temp_sentence:
+                sentence = temp_sentence.strip() + "։ " + sentence.strip()
+                temp_sentence = ""
+
+            # Count valid words in current sentence
+            valid_word_count = self.count_valid_words(sentence, min_char_length)
+
+            # Debug print
+            print(f"Sentence: {sentence}")
+            print(f"Valid word count: {valid_word_count}")
+
+            # If this is the last sentence
+            if i == len(sentences) - 1:
+                if valid_word_count < min_words and merged:
+                    # Append to the last merged sentence
+                    merged[-1] = merged[-1].strip() + "։ " + sentence.strip()
+                else:
+                    merged.append(sentence)
+                continue
+
+            # If sentence doesn't have enough valid words, store it temporarily
+            if valid_word_count < min_words:
+                temp_sentence = sentence
+            else:
+                # If we have a temp sentence, merge it with current sentence
+                if temp_sentence:
+                    sentence = temp_sentence.strip() + "։ " + sentence.strip()
+                    temp_sentence = ""
+                merged.append(sentence)
+
+        return merged
+
     def load_document(self, doc_file=None):
-        """Load text from doc/docx file and split by ':'"""
+        """Load text from doc/docx file and split by '։' with handling for short sentences"""
         if doc_file is None:
             doc_file = filedialog.askopenfilename(
                 title="Select Document File",
@@ -157,14 +288,21 @@ class AudioSplitter:
             # Get starting number from config
             with open(self.config_file, 'r') as f:
                 config = json.load(f)
-            start_number = config.get('start_segment_number', 1)  # Get start number, default to 1
+            start_number = config.get('start_segment_number', 1)
 
             doc = Document(doc_file)
             # Extract and concatenate all text
             full_text = ' '.join([paragraph.text for paragraph in doc.paragraphs])
 
-            # Split by ':' and clean sentences
-            self.sentences = [sent.strip() for sent in full_text.split('։') if sent.strip()]
+            # Split by '։' and clean sentences
+            initial_sentences = [sent.strip() for sent in full_text.split('։') if sent.strip()]
+
+            # Merge short sentences, considering word length
+            self.sentences = self.merge_short_sentences(
+                initial_sentences,
+                min_words=3,
+                min_char_length=4
+            )
 
             # Clear and update text widget
             self.text_widget.delete('1.0', tk.END)
@@ -174,6 +312,7 @@ class AudioSplitter:
                 self.text_widget.insert(tk.END, f"{i}. {sentence}\n\n")
 
             print(f"Loaded {len(self.sentences)} sentences starting from {start_number}")
+            print("Sentences after merging:", self.sentences)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load document: {str(e)}")
@@ -281,7 +420,7 @@ class AudioSplitter:
         # Load the sentence index from config
         self.current_sentence_index = config.get("current_sentence_index", 0)
 
-        print("current_sentence_index: ", self.current_sentence_index)
+        # print("current_sentence_index: ", self.current_sentence_index)
 
 
         # Update file label
@@ -368,35 +507,53 @@ class AudioSplitter:
 
     def find_silence_point(self, marked_time, window_size=1, silence_threshold=-50):
         """
-        Find closest silence point within window around marked time.
-        window_size: Size of window to check on each side (in seconds)
-        silence_threshold: dB threshold for silence detection
+        Find closest silence point within window around marked time with detailed logging.
+
+        Args:
+            marked_time: Time to find silence around (in seconds)
+            window_size: Size of window to check on each side (in seconds)
+            silence_threshold: dB threshold for silence detection
         """
+        # Initialize logger if not already done
+        if not hasattr(self, 'silence_logger'):
+            self.silence_logger = SilenceDetectionLogger()
+
+        result = SilenceAnalysisResult(
+            timestamp=datetime.now().isoformat(),
+            marked_time=marked_time,
+            marked_point_dbfs=0,  # Will be updated
+            window_size=window_size,
+            silence_threshold=silence_threshold,
+            silent_regions=[]
+        )
+
         try:
             # Convert time to milliseconds
             mark_ms = int(marked_time * 1000)
             window_ms = int(window_size * 1000)
 
-            # First we try to understand is marked point silence point or not
+            # Check marked point
             marked_start_ms = max(0, mark_ms - 10)
             marked_end_ms = min(len(self.audio), mark_ms + 10)
             marked_audio_segment = self.audio[marked_start_ms:marked_end_ms]
-            dB = marked_audio_segment.dBFS
-            print("Marked point dBFS: ", dB)
-            if dB < -45:
+            result.marked_point_dbfs = marked_audio_segment.dBFS
+
+            if result.marked_point_dbfs < -45:
+                result.adjusted_time = marked_time
+                result.adjusted_point_dbfs = result.marked_point_dbfs
+                self.silence_logger.log_analysis(result)
                 return marked_time
 
-            # Extract window of audio around marked point
+            # Extract window of audio
             start_ms = max(0, mark_ms - window_ms)
             end_ms = min(len(self.audio), mark_ms + window_ms)
-
             audio_segment = self.audio[start_ms:end_ms]
 
-            # Split into small chunks for analysis
+            # Analyze chunks
             chunk_size = 50  # 50ms chunks
             chunks = [audio_segment[i:i + chunk_size] for i in range(0, len(audio_segment), chunk_size)]
 
-            # Find chunks with silence
+            # Find silent chunks
             silent_chunks = []
             for i, chunk in enumerate(chunks):
                 if chunk.dBFS < silence_threshold:
@@ -404,7 +561,7 @@ class AudioSplitter:
                     silent_chunks.append((chunk_time, chunk.dBFS))
 
             if silent_chunks:
-                # Find longest sequence of silent chunks
+                # Find silent regions
                 silent_regions = []
                 current_region = [silent_chunks[0]]
 
@@ -419,22 +576,37 @@ class AudioSplitter:
                 if len(current_region) > 1:
                     silent_regions.append(current_region)
 
+                result.silent_regions = [[(t, db) for t, db in region] for region in silent_regions]
+
                 if silent_regions:
-                    # Get the longest silent region
+                    # Get the longest region
                     longest_region = max(silent_regions, key=len)
-                    # Use middle of the longest silent region
+                    result.longest_region_length = len(longest_region) * chunk_size / 1000  # Convert to seconds
+
+                    # Calculate middle point
                     start_time = longest_region[0][0]
                     end_time = longest_region[-1][0]
-                    middle_time = (start_time + end_time) / 2000  # Convert back to seconds
+                    middle_time = (start_time + end_time) / 2000
 
-                    print(f"Found silence: original={marked_time:.3f}s, adjusted={middle_time:.3f}s")
+                    # Get dBFS at adjusted point
+                    adjusted_start_ms = max(0, int(middle_time * 1000) - 10)
+                    adjusted_end_ms = min(len(self.audio), int(middle_time * 1000) + 10)
+                    adjusted_audio_segment = self.audio[adjusted_start_ms:adjusted_end_ms]
+                    result.adjusted_point_dbfs = adjusted_audio_segment.dBFS
+                    result.adjusted_time = middle_time
+
+                    self.silence_logger.log_analysis(result)
                     return middle_time
 
-            print(f"No suitable silence found, using original time: {marked_time:.3f}s")
+            result.adjusted_time = marked_time
+            result.adjusted_point_dbfs = result.marked_point_dbfs
+            self.silence_logger.log_analysis(result)
             return marked_time
 
         except Exception as e:
-            print(f"Error in silence detection: {str(e)}")
+            result.status = "error"
+            result.error = str(e)
+            self.silence_logger.log_analysis(result)
             return marked_time
 
     def mark_point(self, event=None):
@@ -598,7 +770,7 @@ class AudioSplitter:
 
         try:
             start_number = self.get_next_segment_number()
-            print("start_number: ", start_number)
+            # print("start_number: ", start_number)
 
             metadata = []
             # Get all points including 0 as start
@@ -617,7 +789,7 @@ class AudioSplitter:
 
             # Get only the unprocessed points
             points = all_points[start_idx:]
-            print(f"Processing points from index {start_idx}: {points}")
+            # print(f"Processing points from index {start_idx}: {points}")
 
             # Split audio file into segments
             for i in range(len(points) - 1):
