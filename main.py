@@ -251,8 +251,8 @@ class AudioSplitter:
             valid_word_count = self.count_valid_words(sentence, min_char_length)
 
             # Debug print
-            print(f"Sentence: {sentence}")
-            print(f"Valid word count: {valid_word_count}")
+            # print(f"Sentence: {sentence}")
+            # print(f"Valid word count: {valid_word_count}")
 
             # If this is the last sentence
             if i == len(sentences) - 1:
@@ -312,7 +312,7 @@ class AudioSplitter:
                 self.text_widget.insert(tk.END, f"{i}. {sentence}\n\n")
 
             print(f"Loaded {len(self.sentences)} sentences starting from {start_number}")
-            print("Sentences after merging:", self.sentences)
+            # print("Sentences after merging:", self.sentences)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load document: {str(e)}")
