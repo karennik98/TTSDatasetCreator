@@ -54,7 +54,7 @@ def split_audio(input_file, split_point_seconds, output_dir="split_audio"):
 if __name__ == "__main__":
     try:
         # Replace these with your actual file path and split point
-        input_audio = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\split_audio\\hobbit_11_part2.wav"
+        input_audio = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\split_audio\\hobbit_13_last_part2.wav"
         split_at_seconds = 7
 
         part1, part2 = split_audio(input_audio, split_at_seconds)

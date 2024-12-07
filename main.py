@@ -33,7 +33,6 @@ class SilenceAnalysisResult:
     status: str = "success"
     error: Optional[str] = None
 
-
 class SilenceDetectionLogger:
     def __init__(self, log_file="silence_detection.log"):
         self.logger = logging.getLogger("silence_detection")
@@ -79,6 +78,7 @@ def has_files(directory_path):
 
 class AudioSplitter:
     def __init__(self, root):
+        # Add this line in the __init__ method of AudioSplitter class to apply dark mode
         self.root = root
         self.root.title("Audio Splitter")
 
@@ -107,6 +107,8 @@ class AudioSplitter:
 
         # Create GUI elements
         self.create_gui()
+
+        self.apply_dark_mode()
 
         # Start slider update thread
         self.slider_update_thread = threading.Thread(target=self.update_slider, daemon=True)
@@ -198,6 +200,26 @@ class AudioSplitter:
         # Bind window close event
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+    def apply_dark_mode(self):
+        self.root.configure(bg='#2e2e2e')
+        self.file_label.configure(bg='#2e2e2e', fg='#ffffff')
+        self.time_label.configure(bg='#2e2e2e', fg='#ffffff')
+        self.status_label.configure(bg='#2e2e2e', fg='#ffffff')
+
+        for widget in [self.config_frame, self.controls_frame, self.points_frame, self.buttons_frame, self.text_frame]:
+            widget.configure(bg='#2e2e2e')
+
+        for button in self.config_frame.winfo_children() + self.controls_frame.winfo_children() + self.buttons_frame.winfo_children():
+            button.configure(bg='#444444', fg='#ffffff', activebackground='#555555', activeforeground='#ffffff')
+
+        self.progress_bar.configure(bg='#2e2e2e', fg='#ffffff', troughcolor='#444444', sliderrelief='flat',
+                                    highlightbackground='#2e2e2e')
+        self.points_listbox.configure(bg='#444444', fg='#ffffff', selectbackground='#555555',
+                                      selectforeground='#ffffff')
+        self.text_widget.configure(bg='#444444', fg='#ffffff', insertbackground='#ffffff')
+        self.text_scroll.configure(bg='#2e2e2e', troughcolor='#444444')
+
+        self.text_widget.tag_config('highlight', background='#555555', foreground='#ffffff')
 
     def update_status(self, message):
         self.status_label.config(text=message)
@@ -323,7 +345,6 @@ class AudioSplitter:
             return self.text_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
         except tk.TclError:  # No selection
             return None
-
 
     def create_new_config(self):
         """Create a new configuration file with all necessary paths"""
@@ -676,7 +697,7 @@ class AudioSplitter:
                 break
 
             # Configure highlight tag
-            self.text_widget.tag_config('highlight', background='yellow')
+            self.text_widget.tag_config('highlight', background='green', foreground='#ffffff', font=("Helvetica", 16))
 
     def save_current_state(self):
         """Save current state to config file"""
