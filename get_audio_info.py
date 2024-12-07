@@ -31,13 +31,13 @@ def extract_wav_info(wav_file_path):
 
 def main():
     # wav_file_path = 'C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\archive\\Narek Barseghyan\\Hobbit\\hobbit_10.wav'
-    wav_file_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_13_last.wav"
+    wav_file_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\tmp\\hobbit_15_last.wav"
 
     try:
         audio_info = extract_wav_info(wav_file_path)
 
         # Write the audio info to a JSON file
-        output_file = "hobbit_13_temp_wav.json"
+        output_file = "hobbit_15_temp_wav.json"
         with open(output_file, 'w') as json_file:
             json.dump(audio_info, json_file, indent=4)
 

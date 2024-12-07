@@ -1,4 +1,5 @@
 .idea/
 tmp/
+split_audio/
 *.log
 
