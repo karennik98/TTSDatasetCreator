@@ -18,7 +18,6 @@ from typing import List, Tuple, Optional
 from datetime import datetime
 import json
 
-
 @dataclass
 class SilenceAnalysisResult:
     timestamp: str
