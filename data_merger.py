@@ -4,16 +4,33 @@ import pandas as pd
 from pathlib import Path
 import re
 import logging
+import sys
+import json
+from datetime import datetime
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('merge_process.log'),
-        logging.StreamHandler()
-    ]
-)
+
+# Set up logging with UTF-8 encoding
+def setup_logging():
+    log_filename = f'merge_process_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+
+    # Configure logging to file with UTF-8 encoding
+    file_handler = logging.FileHandler(log_filename, 'w', encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+
+    # Configure console output with UTF-8 encoding
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+
+    # Set format for both handlers
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
 
 
 def natural_sort_key(s):
@@ -25,18 +42,48 @@ def natural_sort_key(s):
     return int(numbers[0]) if numbers else 0
 
 
-def validate_metadata(df, subdir):
+def analyze_duplicates(metadata_dfs):
     """
-    Validate metadata DataFrame and ensure all required columns are present
+    Analyze duplicate entries across all metadata files and save detailed report
     """
-    required_columns = ['filename', 'text']
-    missing_columns = [col for col in required_columns if col not in df.columns]
+    all_files = pd.concat(metadata_dfs, ignore_index=True)
+    duplicates = all_files[all_files.duplicated(subset=['filename'], keep=False)]
 
-    if missing_columns:
-        logging.error(f"Missing required columns in {subdir}: {missing_columns}")
-        return False
+    if not duplicates.empty:
+        duplicate_report = []
 
-    return True
+        # Group duplicates by filename
+        for filename in duplicates.filename.unique():
+            dupes = duplicates[duplicates.filename == filename]
+
+            duplicate_info = {
+                'filename': filename,
+                'occurrences': len(dupes),
+                'locations': dupes['source_dir'].tolist(),
+                'texts': dupes['text'].tolist(),
+                'identical_text': len(dupes['text'].unique()) == 1
+            }
+
+            duplicate_report.append(duplicate_info)
+
+            # Log detailed information
+            logging.info(f"\nDuplicate file: {filename}")
+            if duplicate_info['identical_text']:
+                logging.info("  All versions have identical text")
+            else:
+                logging.info("  Different text versions found:")
+                for i, text in enumerate(duplicate_info['texts'], 1):
+                    logging.info(f"  Version {i}: {text}")
+            logging.info(f"  Found in directories: {duplicate_info['locations']}")
+
+        # Save detailed report to JSON
+        report_file = 'duplicate_analysis.json'
+        with open(report_file, 'w', encoding='utf-8') as f:
+            json.dump(duplicate_report, f, ensure_ascii=False, indent=2)
+        logging.info(f"\nDetailed duplicate analysis saved to {report_file}")
+
+        return duplicate_report
+    return []
 
 
 def merge_audio_and_metadata(data_dir):
@@ -54,7 +101,7 @@ def merge_audio_and_metadata(data_dir):
 
     metadata_dfs = []
     processed_files = set()
-    missing_audio_files = []
+    file_origins = {}  # Track where each file comes from
 
     # Get and sort subdirectories
     subdirs = [d for d in data_path.iterdir() if d.is_dir() and d.name != 'hy_speech' and d.name != "archive"]
@@ -63,45 +110,29 @@ def merge_audio_and_metadata(data_dir):
     for subdir in subdirs:
         logging.info(f"Processing directory: {subdir}")
 
-        # Process metadata.csv first to get expected files
         metadata_file = subdir / "metadata.csv"
         if metadata_file.exists():
             try:
                 df = pd.read_csv(metadata_file, sep='|')
-                if not validate_metadata(df, subdir):
-                    continue
-
-                # Store original filenames before processing
-                expected_files = set(df['filename'].values)
-
-                # Add speaker and source if missing
-                if 'speaker' not in df.columns:
-                    df['speaker'] = 'narek_barseghyan'
-                if 'source' not in df.columns:
-                    df['source'] = 'hobbit'
-
+                df['source_dir'] = str(subdir)  # Add source directory information
                 metadata_dfs.append(df)
 
                 # Process WAV files
                 wav_dir = subdir / "wav"
                 if wav_dir.exists():
-                    wav_files = set(f.name for f in wav_dir.glob("*.wav"))
-
-                    # Check for missing audio files
-                    missing = expected_files - wav_files
-                    if missing:
-                        missing_audio_files.extend([(subdir, f) for f in missing])
-
                     for wav_file in wav_dir.glob("*.wav"):
                         if wav_file.name in processed_files:
-                            logging.warning(f"Duplicate audio file found: {wav_file.name}")
+                            if wav_file.name in file_origins:
+                                logging.warning(f"Duplicate audio file {wav_file.name} found in {subdir}. "
+                                                f"Previously seen in {file_origins[wav_file.name]}")
                             continue
 
                         target_file = wav_output_path / wav_file.name
                         try:
                             shutil.copy2(wav_file, target_file)
                             processed_files.add(wav_file.name)
-                            logging.info(f"Copied {wav_file} to {target_file}")
+                            file_origins[wav_file.name] = str(subdir)
+                            logging.info(f"Copied {wav_file.name}")
                         except Exception as e:
                             logging.error(f"Error copying {wav_file}: {e}")
 
@@ -112,42 +143,28 @@ def merge_audio_and_metadata(data_dir):
 
     if metadata_dfs:
         try:
+            # Analyze duplicates before merging
+            duplicate_report = analyze_duplicates(metadata_dfs)
+
+            # Merge metadata, keeping first occurrence of duplicates
             merged_metadata = pd.concat(metadata_dfs, ignore_index=True)
+            merged_metadata = merged_metadata.drop_duplicates(subset=['filename'], keep='first')
 
-            # Validate final metadata
-            missing_speaker = merged_metadata['speaker'] != 'narek_barseghyan'
-            missing_source = merged_metadata['source'] != 'hobbit'
+            # Ensure required columns and values
+            if 'speaker' not in merged_metadata.columns:
+                merged_metadata['speaker'] = 'narek_barseghyan'
+            if 'source' not in merged_metadata.columns:
+                merged_metadata['source'] = 'hobbit'
 
-            if missing_speaker.any() or missing_source.any():
-                logging.warning(f"Found {missing_speaker.sum()} rows with incorrect speaker")
-                logging.warning(f"Found {missing_source.sum()} rows with incorrect source")
-
-                # Fix missing values
-                merged_metadata.loc[missing_speaker, 'speaker'] = 'narek_barseghyan'
-                merged_metadata.loc[missing_source, 'source'] = 'hobbit'
-
-            # Ensure all columns are present and in correct order
+            # Final metadata cleanup
             merged_metadata = merged_metadata[['speaker', 'source', 'filename', 'text']]
 
-            # Remove duplicates
-            duplicates = merged_metadata.duplicated(subset=['filename'], keep='first')
-            if duplicates.any():
-                logging.warning(f"Found {duplicates.sum()} duplicate entries in metadata")
-                merged_metadata = merged_metadata[~duplicates]
-
-            # Save metadata
+            # Save final metadata
             metadata_output_path = hy_speech_path / "metadata.csv"
-            merged_metadata.to_csv(metadata_output_path, sep='|', index=False)
-            logging.info(f"Merged metadata saved to {metadata_output_path}")
-
-            # Final validation report
+            merged_metadata.to_csv(metadata_output_path, sep='|', index=False, encoding='utf-8')
+            logging.info(f"\nMerged metadata saved to {metadata_output_path}")
             logging.info(f"Total audio files processed: {len(processed_files)}")
             logging.info(f"Total metadata entries: {len(merged_metadata)}")
-
-            if missing_audio_files:
-                logging.error("Missing audio files:")
-                for subdir, filename in missing_audio_files:
-                    logging.error(f"  {subdir} -> {filename}")
 
         except Exception as e:
             logging.error(f"Error merging metadata: {e}")
@@ -157,4 +174,5 @@ def merge_audio_and_metadata(data_dir):
 
 if __name__ == "__main__":
     source_dir = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data"
+    setup_logging()  # Initialize logging with UTF-8 support
     merge_audio_and_metadata(source_dir)
