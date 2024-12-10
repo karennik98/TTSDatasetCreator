@@ -37,7 +37,7 @@ def main():
         audio_info = extract_wav_info(wav_file_path)
 
         # Write the audio info to a JSON file
-        output_file = "hobbit_15_temp_wav.json"
+        output_file = "tmp/hobbit_15_temp_wav.json"
         with open(output_file, 'w') as json_file:
             json.dump(audio_info, json_file, indent=4)
 

@@ -1,9 +1,0 @@
-{
-    "channels": 2,
-    "sample_width": 2,
-    "framerate": 44100,
-    "n_frames": 55012608,
-    "compression_type": "NONE",
-    "compression_name": "not compressed",
-    "duration": 1247.4514285714286
-}

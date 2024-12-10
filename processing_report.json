@@ -1,0 +1,9 @@
+{
+  "total_audio_files": 2522,
+  "total_metadata_entries": 2522,
+  "consistency_check": {
+    "files_without_metadata": [],
+    "files_without_audio": []
+  },
+  "duplicate_analysis": []
+}

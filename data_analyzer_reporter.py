@@ -102,7 +102,7 @@ def analyze_wav_files(directory, output):
     df.sort_values('duration').to_csv(output_path / 'file_durations.csv', index=False)
 
 if __name__ == "__main__":
-    source_dir = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\hy_speech\\wav"
-    output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\hy_speech\\characteristics"
+    source_dir = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/wav"
+    output_path = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/characteristics"
 
     analyze_wav_files(source_dir, output_path)

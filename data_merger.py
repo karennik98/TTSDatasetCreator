@@ -262,6 +262,6 @@ def merge_audio_and_metadata(data_dir):
 
 
 if __name__ == "__main__":
-    source_dir = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data"
+    source_dir = "/home/karen/PhD/TTSDatasetCreator/data"
     setup_logging()  # Initialize logging with UTF-8 support
     merge_audio_and_metadata(source_dir)
