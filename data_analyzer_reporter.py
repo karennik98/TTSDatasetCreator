@@ -17,7 +17,7 @@ def get_wav_duration(wav_path):
         return duration
 
 
-def analyze_wav_files(directory):
+def analyze_wav_files(directory, output):
     """
     Analyze WAV files in the given directory and generate statistics.
 
@@ -25,6 +25,7 @@ def analyze_wav_files(directory):
         directory (str): Path to directory containing WAV files
     """
     wav_path = Path(directory)
+    output_path = Path(output)
     durations = []
     file_stats = []
 
@@ -89,18 +90,19 @@ def analyze_wav_files(directory):
     plt.ylabel('Number of Files')
 
     # Save plot
-    plot_path = wav_path / 'duration_distribution.png'
+    plot_path = output_path / 'duration_distribution.png'
     plt.savefig(plot_path)
     plt.close()
 
     # Save detailed statistics to CSV
     stats_df = pd.DataFrame.from_dict(stats, orient='index', columns=['Value'])
-    stats_df.to_csv(wav_path / 'audio_statistics.csv')
+    stats_df.to_csv(output_path / 'audio_statistics.csv')
 
     # Save full file listing with durations
-    df.sort_values('duration').to_csv(wav_path / 'file_durations.csv', index=False)
+    df.sort_values('duration').to_csv(output_path / 'file_durations.csv', index=False)
 
 if __name__ == "__main__":
-    source_dir = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/wav"
+    source_dir = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\hy_speech\\wav"
+    output_path = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data\\hy_speech\\characteristics"
 
-    analyze_wav_files(source_dir)
+    analyze_wav_files(source_dir, output_path)

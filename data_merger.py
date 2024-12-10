@@ -86,5 +86,5 @@ def merge_audio_and_metadata(data_dir):
         print("No metadata files found")
 
 if __name__ == "__main__":
-    source_dir = "/home/karen/PhD/TTSDatasetCreator/data"
+    source_dir = "C:\\Users\\karenn\\PhD\\TTSDatasetCreator\\data"
     merge_audio_and_metadata(source_dir)
