@@ -23,20 +23,19 @@ def process_audio_files(wav_dir, metadata_path, durations_path):
     # Read metadata
     metadata_df = pd.read_csv(metadata_path, sep='|')
 
-    # Initialize changes log
+    # Initialize changes and failures logs
     changes = []
+    failures = []
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Step 1: Remove files shorter than 1 second
+    # Step 1: Remove files shorter than 1 second (unchanged)
     short_files = {file: duration for file, duration in durations_dict.items()
                    if duration < 1.0}
 
     for file in short_files:
         file_path = os.path.join(wav_dir, file)
         if os.path.exists(file_path):
-            # Remove wav file
             os.remove(file_path)
-            # Log the change
             changes.append({
                 'timestamp': current_time,
                 'action': 'deleted_short',
@@ -47,7 +46,7 @@ def process_audio_files(wav_dir, metadata_path, durations_path):
     # Update metadata by removing entries for deleted files
     metadata_df = metadata_df[~metadata_df['filename'].isin(short_files.keys())]
 
-    # Step 2: Process files longer than 16 seconds
+    # Step 2: Process files longer than 16 seconds with new logic
     long_files = {file: duration for file, duration in durations_dict.items()
                   if duration >= 16.0}
 
@@ -57,8 +56,18 @@ def process_audio_files(wav_dir, metadata_path, durations_path):
             # Load audio file
             audio = AudioSegment.from_wav(file_path)
 
+            # Convert 2s and 14s to milliseconds
+            start_time = 2000  # 2 seconds
+            end_time = 14000  # 14 seconds
+
+            # Only look for silence in the 2-14 second region
+            target_region = audio[start_time:end_time]
+
             # Detect silence regions (min_silence_len=500ms, silence_thresh=-40dBFS)
-            silence_ranges = detect_silence(audio, min_silence_len=500, silence_thresh=-40)
+            silence_ranges = detect_silence(target_region, min_silence_len=500, silence_thresh=-40)
+
+            # Adjust silence ranges to account for the offset
+            silence_ranges = [(start + start_time, end + start_time) for start, end in silence_ranges]
 
             if silence_ranges:
                 # Find the longest silence region
@@ -97,7 +106,7 @@ def process_audio_files(wav_dir, metadata_path, durations_path):
                     pd.DataFrame([new_row1, new_row2])
                 ], ignore_index=True)
 
-                # Log the changes
+                # Log the successful split
                 changes.append({
                     'timestamp': current_time,
                     'action': 'split_long',
@@ -105,6 +114,14 @@ def process_audio_files(wav_dir, metadata_path, durations_path):
                     'new_file1': new_file1,
                     'new_file2': new_file2,
                     'split_point_ms': split_point
+                })
+            else:
+                # Log the failure to find silence
+                failures.append({
+                    'timestamp': current_time,
+                    'file': file,
+                    'duration': durations_dict[file],
+                    'reason': 'No silence found between 2-14 seconds'
                 })
 
     # Save updated metadata
@@ -114,18 +131,14 @@ def process_audio_files(wav_dir, metadata_path, durations_path):
     changes_df = pd.DataFrame(changes)
     changes_df.to_csv('changes.csv', index=False)
 
-if __name__ == "__main__":
-    # import argparse
-    #
-    # parser = argparse.ArgumentParser(description='Process audio files based on duration.')
-    # parser.add_argument('wav_dir', help='Directory containing WAV files')
-    # parser.add_argument('metadata_path', help='Path to metadata CSV file')
-    # parser.add_argument('durations_path', help='Path to file_durations.csv')
-    #
-    # args = parser.parse_args()
+    # Save failures log
+    failures_df = pd.DataFrame(failures)
+    failures_df.to_csv('split_failures.csv', index=False)
 
+
+if __name__ == "__main__":
     wav_dir = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/wav"
     metadata_path = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/metadata.csv"
-    durations_path = "/data/hy_speech/characteristics/file_durations.csv"
+    durations_path = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/characteristics/file_durations.csv"
 
     process_audio_files(wav_dir, metadata_path, durations_path)

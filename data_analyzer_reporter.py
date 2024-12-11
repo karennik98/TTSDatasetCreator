@@ -104,5 +104,7 @@ def analyze_wav_files(directory, output):
 if __name__ == "__main__":
     source_dir = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/wav"
     output_path = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/characteristics"
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
 
     analyze_wav_files(source_dir, output_path)

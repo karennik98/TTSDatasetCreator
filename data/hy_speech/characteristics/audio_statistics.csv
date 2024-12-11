@@ -1,11 +1,11 @@
 ,Value
-Total files,2668
-Min duration,0.45 seconds
-Max duration,27.12 seconds
-Average duration,7.51 seconds
-Median duration,6.66 seconds
+Total files,2706
+Min duration,1.17 seconds
+Max duration,15.99 seconds
+Average duration,7.41 seconds
+Median duration,6.74 seconds
 Total duration,5:34:03
-Files < 3 seconds,239
-Files 3-5 seconds,568
-Files 5-10 seconds,1229
-Files > 10 seconds,632
+Files < 3 seconds,193
+Files 3-5 seconds,583
+Files 5-10 seconds,1303
+Files > 10 seconds,627
