@@ -1,0 +1,11 @@
+2 days -> collecting data
+    100 speakers each 20 minute data
+every day 2 anotations -> 40 minute
+100 / 2 = 50 days
+100 * 20 = 2000 minute = 33.3 hour data
+
+
+50 speakers each 20 minute data
+every day 2 anotations -> 40 minute
+50 / 2 = 25 days
+50 * 20 = 1000 minute

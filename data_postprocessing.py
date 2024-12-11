@@ -126,6 +126,6 @@ if __name__ == "__main__":
 
     wav_dir = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/wav"
     metadata_path = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/metadata.csv"
-    durations_path = "/home/karen/PhD/TTSDatasetCreator/data/hy_speech/characteristics/file_durations.csv"
+    durations_path = "/data/hy_speech/characteristics/file_durations.csv"
 
     process_audio_files(wav_dir, metadata_path, durations_path)
